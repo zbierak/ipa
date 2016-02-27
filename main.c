@@ -14,9 +14,11 @@ int main()
 		{
 			printf("Found device %s (%s)\n", device_get_uid(devices[i]), device_get_name(devices[i]));
 
-			db_h db = db_create(devices[i]);
+			char* db_location = device_get_photo_db_location(devices[i]);
+			db_h db = db_create(db_location);
 			db_free(db);
 
+			free(db_location);
 			device_free(devices[i]);
 		}
 

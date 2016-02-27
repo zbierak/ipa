@@ -36,6 +36,15 @@ const char* device_get_uid(const device_h handle);
  */
 const char* device_get_name(const device_h handle);
 
+
+/**
+ * Return the location of the photo database relative to root.
+ * @param[in] device A valid handle for an existing device
+ * @return A location to the photo database of the device passed as the argument
+ * @note You should free the returned value by yourself
+ */
+char* device_get_photo_db_location(const device_h device);
+
 /**
  * Frees all memory of a device handle allocated with device_create()
  * @param[in] handle A valid device handle

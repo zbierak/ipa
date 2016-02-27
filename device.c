@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <libimobiledevice/libimobiledevice.h>
 #include <libimobiledevice/lockdown.h>
@@ -41,6 +42,28 @@ const char* device_get_name(const device_h handle)
 {
 	assert(handle);
 	return handle->name;
+}
+
+/*
+ * GVFS default location:  /run/user/$uid/gvfs/
+ * iDevice under GVFS:     afc:host=$device_uid
+ * Photo db under iDevice: PhotoData/Photos.sqlite
+ *
+ * This function combines the three strings and returns a single address to idevice database
+ *
+ * @todo gvfs default location should be extracted from /etc/mtab or somewhere else
+ */
+char* device_get_photo_db_location(const device_h device)
+{
+	const char* device_id = device_get_uid(device);
+	if (device_id == NULL)
+	{
+		return NULL;
+	}
+
+	char* buffer = NULL;
+	asprintf(&buffer, "/run/user/%u/gvfs/afc:host=%s/PhotoData/Photos.sqlite", getuid(), device_id);
+	return buffer;
 }
 
 void device_free(device_h handle)

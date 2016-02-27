@@ -1,7 +1,5 @@
 #pragma once
 
-#include "device.h"
-
 /**
  * A structure for storing the contents of all albums on an idevice
  */
@@ -17,7 +15,7 @@ typedef struct db_s* db_h;
  * @param[in] device A valid handle for an existing device
  * @return A handle for the db of the passed device
  */
-db_h db_create(const device_h device);
+db_h db_create(const char* db_location);
 
 /**
  * Frees all memory of a db handle allocated with db_create()
