@@ -1,4 +1,5 @@
 add_definitions(-D_GNU_SOURCE -std=c11)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic")
 
 file(GLOB sources "*.c")
 add_executable(${CMAKE_PROJECT_NAME} ${sources})
