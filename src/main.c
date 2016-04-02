@@ -21,7 +21,8 @@ int main(int argc, char* argv[])
 			LOG_INFO("Found device %s (%s)", device_get_uid(devices[i]), device_get_name(devices[i]));
 
 			char* db_location = device_get_photo_db_location(devices[i]);
-			db_h db = db_create(db_location);
+			db_h db = db_create(db_location, device_get_name(devices[i]));
+			db_extract_photos(db);
 			db_free(db);
 
 			free(db_location);
