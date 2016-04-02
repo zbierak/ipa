@@ -1,10 +1,17 @@
 #include <stdio.h>
 
+#include "filesystem.h"
 #include "device.h"
 #include "db.h"
 
-int main()
+int main(int argc, char* argv[])
 {
+	if (argc != 2)
+	{
+		fprintf(stderr, "Usage: %s <mount location>\n", argv[0]);
+		return 1;
+	}
+
 	device_h* devices = NULL;
 	size_t devices_count = 0;
 
@@ -24,4 +31,6 @@ int main()
 
 		free(devices);
 	}
+
+	filesystem_run(argv[1]);
 }
