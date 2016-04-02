@@ -1,6 +1,6 @@
 #include "device.h"
+#include "logger.h"
 
-#include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
@@ -80,6 +80,7 @@ bool get_available_devices(device_h** devs, size_t* devs_count)
 {
 	if (devs == NULL || devs_count == NULL)
 	{
+		LOG_WARN("Improper parameters passed to the function");
 		return false;
 	}
 
@@ -88,7 +89,7 @@ bool get_available_devices(device_h** devs, size_t* devs_count)
 
 	if (idevice_get_device_list(&devices, &devices_count) != IDEVICE_E_SUCCESS || devices_count <= 0)
 	{
-		fprintf(stderr, "No idevice found, please check it's plugged in...\n");
+		LOG_ERROR("No idevice found, please check it's plugged in...");
 		return false;
 	}
 
@@ -101,7 +102,7 @@ bool get_available_devices(device_h** devs, size_t* devs_count)
 		idevice_t device = NULL;
 		if (idevice_new(&device, devices[i]) != IDEVICE_E_SUCCESS)
 		{
-			printf("Warning: unable to get details of device %s...\n", devices[i]);
+			LOG_ERROR("Unable to get details of device %s...", devices[i]);
 			continue;
 		}
 
@@ -110,7 +111,7 @@ bool get_available_devices(device_h** devs, size_t* devs_count)
 
 		if (err != LOCKDOWN_E_SUCCESS)
 		{
-			printf("Warning: unable to perform lockdown of device %s, error code %d\n", devices[i], err);
+			LOG_ERROR("Unable to perform lockdown of device %s, error code %d", devices[i], err);
 			idevice_free(device);
 			continue;
 		}
