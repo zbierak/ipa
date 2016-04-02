@@ -213,5 +213,7 @@ bool db_extract_photos(db_h handle)
 	}
 
 	sqlite3_exec(handle->db, query, query_callback, handle, NULL);
+	free(query);
+
 	return true;
 }
