@@ -112,11 +112,8 @@ static bool verify_database_sanity(db_h handle)
 
 db_h db_create(const char* db_location, const char* device_name)
 {
-	if (db_location == NULL || device_name == NULL)
-	{
-		LOG_WARN("db_location nor device_name cannot be NULL");
-		return NULL;
-	}
+	ASSERT_RET(db_location != NULL, NULL);
+	ASSERT_RET(device_name != NULL, NULL);
 
 	db_h handle = calloc(1, sizeof(struct db_s));
 
@@ -172,11 +169,7 @@ void db_free(db_h handle)
 
 bool db_extract_photos(db_h handle)
 {
-	if (handle == NULL)
-	{
-		LOG_WARN("Handle cannot be null");
-		return false;
-	}
+	ASSERT_RET(handle != NULL, false);
 
 	/*
 	 * In here we extract all photos assigned to each user-created album. We know an album
@@ -200,6 +193,7 @@ bool db_extract_photos(db_h handle)
 	int query_callback(void* user_data, int col_count, char** record, char** col_names)
 	{
 		db_h handle = (db_h) user_data;
+		ASSERT_RET(handle != NULL, -1);
 
 		if (col_count != 3)
 		{

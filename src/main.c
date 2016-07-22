@@ -22,8 +22,12 @@ int main(int argc, char* argv[])
 
 			char* db_location = device_get_photo_db_location(devices[i]);
 			db_h db = db_create(db_location, device_get_name(devices[i]));
-			db_extract_photos(db);
-			db_free(db);
+
+			if (db)
+			{
+				db_extract_photos(db);
+				db_free(db);
+			}
 
 			free(db_location);
 			device_free(devices[i]);

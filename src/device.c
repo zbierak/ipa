@@ -22,25 +22,23 @@ struct device_s
 device_h device_create(const char* uid, const char* name)
 {
 	device_h handle = calloc(1, sizeof(struct device_s));
+	ASSERT_RET(handle != NULL, NULL);
 
-	if (handle)
-	{
-		handle->uid = STRDUP(uid);
-		handle->name = STRDUP(name);
-	}
+	handle->uid = STRDUP(uid);
+	handle->name = STRDUP(name);
 
 	return handle;
 }
 
 const char* device_get_uid(const device_h handle)
 {
-	assert(handle);
+	ASSERT_RET(handle != NULL, NULL);
 	return handle->uid;
 }
 
 const char* device_get_name(const device_h handle)
 {
-	assert(handle);
+	ASSERT_RET(handle != NULL, NULL);
 	return handle->name;
 }
 
@@ -56,10 +54,7 @@ const char* device_get_name(const device_h handle)
 char* device_get_photo_db_location(const device_h device)
 {
 	const char* device_id = device_get_uid(device);
-	if (device_id == NULL)
-	{
-		return NULL;
-	}
+	ASSERT_RET(device_id != NULL, NULL);
 
 	char* buffer = NULL;
 	asprintf(&buffer, "/run/user/%u/gvfs/afc:host=%s/PhotoData/Photos.sqlite", getuid(), device_id);
@@ -78,11 +73,8 @@ void device_free(device_h handle)
 
 bool get_available_devices(device_h** devs, size_t* devs_count)
 {
-	if (devs == NULL || devs_count == NULL)
-	{
-		LOG_WARN("Improper parameters passed to the function");
-		return false;
-	}
+	ASSERT_RET(devs != NULL, false);
+	ASSERT_RET(devs_count != NULL, false);
 
 	char** devices = NULL;
 	int devices_count = 0;
@@ -95,6 +87,7 @@ bool get_available_devices(device_h** devs, size_t* devs_count)
 
 	size_t ldevs_count = devices_count;
 	device_h* ldevs = calloc(ldevs_count, sizeof(device_h));
+	ASSERT_RET(ldevs != NULL, false);
 
 	off_t offset = 0;
 	for (size_t i = 0; i < ldevs_count; i++)

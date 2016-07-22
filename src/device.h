@@ -18,21 +18,21 @@ typedef struct device_s* device_h;
  * Creates the instance of device based on uid and name
  * @param[in] uid A unique uid of an idevice
  * @param[in] name A user friendly name of an idevice
- * @return A handle for the device with the passed parameters
+ * @return A handle for the device with the passed parameters or NULL on error
  */
 device_h device_create(const char* uid, const char* name);
 
 /**
  * Gets the uid of a device
  * @param[in] handle A valid device handle
- * @return A uid of the device passed by handle
+ * @return A uid of the device passed by handle or NULL when handle is NULL
  */
 const char* device_get_uid(const device_h handle);
 
 /**
  * Gets the name of a device
  * @param[in] handle A valid device handle
- * @return A name of the device passed by handle
+ * @return A name of the device passed by handle or NULL when handle is NULL
  */
 const char* device_get_name(const device_h handle);
 

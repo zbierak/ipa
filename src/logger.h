@@ -47,6 +47,15 @@ const char* logger_sanitize_file_name(const char* file_name);
 #define LOG_ERROR_OVERWRITE(format, ARG...) do { fprintf(stderr, format "\n", ##ARG); } while(0)
 #endif
 
+#ifdef LOG_MODE_DEBUG
+#define ASSERT_RET(stmt, ...) if (!(stmt)) { \
+	fprintf(stderr, "[ASSERT] failed at expression %s [%s@%s:%d]\n", #stmt, __func__, logger_sanitize_file_name(__FILE__), __LINE__); \
+	return __VA_ARGS__; \
+}
+#else
+#define ASSERT_RET(stmt, ...);
+#endif
+
 // Logger macros which are enabled/disabled by the log level
 #if LOG_LEVEL <= LOG_LEVEL_DEBUG
 #define LOG_DEBUG(format, ARG...) LOG_DEBUG_OVERWRITE(format, ##ARG)
