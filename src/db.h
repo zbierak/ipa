@@ -28,9 +28,3 @@ db_h db_create(const char* db_location, const char* device_name);
  */
 void db_free(db_h handle);
 
-/**
- * Extract photos from all albums (for now they are printed to stdout)
- * @param handle A valid database handle
- * @return true on success, false on failure
- */
-bool db_extract_photos(db_h handle);

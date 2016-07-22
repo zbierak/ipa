@@ -1,6 +1,8 @@
 #pragma once
 
+#include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 // A null-safe variant of strdup
 #define STRDUP(x) (((x) == NULL) ? NULL : strdup(x))

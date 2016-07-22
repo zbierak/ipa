@@ -25,7 +25,6 @@ int main(int argc, char* argv[])
 
 			if (db)
 			{
-				db_extract_photos(db);
 				db_free(db);
 			}
 

@@ -7,7 +7,7 @@ if (IPA_RELEASE)
 	set(CMAKE_BUILD_TYPE Release)
 else(IPA_RELEASE)
 	add_definitions(-DLOG_LEVEL=LOG_LEVEL_ALL)
-	add_definitions(-DLOG_MODE_DEBUG)
+	add_definitions(-DENABLE_DEBUG_ENVIRONMENT)
 endif(IPA_RELEASE)
 
 add_subdirectory(src)

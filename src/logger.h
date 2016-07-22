@@ -31,7 +31,7 @@ const char* logger_sanitize_file_name(const char* file_name);
 // since the errors (via LOG_ERROR) are presented to the end users on different events (e.g.
 // whenever the device cannot be detected etc.), hence the need for the plain text messages
 // for release.
-#ifdef LOG_MODE_DEBUG
+#ifdef ENABLE_DEBUG_ENVIRONMENT
 #define LOG_DEBUG_OVERWRITE(format, ARG...) \
 	do { printf("[DEBUG] " format " [%s@%s:%d]\n", ##ARG, __func__, logger_sanitize_file_name(__FILE__), __LINE__); } while(0)
 #define LOG_INFO_OVERWRITE(format, ARG...) \

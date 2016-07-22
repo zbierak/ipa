@@ -1,4 +1,5 @@
 #include "db.h"
+#include "album.h"
 #include "utils.h"
 #include "logger.h"
 
@@ -6,21 +7,28 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <glib.h>
+
 // the name of the table containing the photos
 #define PHOTO_TABLE_NAME 	"ZGENERICASSET"
 
 // the name of the table containing the photo albums
 #define ALBUM_TABLE_NAME 	"ZGENERICALBUM"
 
-struct db_s
+/**
+ * A structure behind db_h handle
+ */
+typedef struct db_s
 {
-	sqlite3* db;
-	char* device_name;
+	sqlite3* db;                    /// the active connection to the sqlite database
+	char* device_name;              /// the human-readable of the corresponding device (may not be globally unique)
 
-	char* assets_table_name;
-	char* assets_album_fk;
-	char* assets_photo_fk;
-};
+	char* assets_table_name;        /// discovered table name storing assets (see verify_database_sanity())
+	char* assets_album_fk;          /// discovered foreign key of album in assets table (see verify_database_sanity())
+	char* assets_photo_fk;          /// discovered foreign key of photo in assets table (see verify_database_sanity())
+
+	GHashTable* albums;             /// lookup table of all albums retrieved from database <album-name, album details> [char*, album_h]
+} db_t;
 
 static bool verify_database_sanity(db_h handle)
 {
@@ -110,64 +118,7 @@ static bool verify_database_sanity(db_h handle)
 	return handle->assets_album_fk != NULL && handle->assets_photo_fk != NULL;
 }
 
-db_h db_create(const char* db_location, const char* device_name)
-{
-	ASSERT_RET(db_location != NULL, NULL);
-	ASSERT_RET(device_name != NULL, NULL);
-
-	db_h handle = calloc(1, sizeof(struct db_s));
-
-	if (handle)
-	{
-		LOG_DEBUG("DB path for device %s: %s", device_name, db_location);
-		handle->device_name = strdup(device_name);
-
-		if (access(db_location, F_OK) == -1)
-		{
-			LOG_ERROR("Unable to open database %s (improper path)", db_location);
-			db_free(handle);
-			return NULL;
-		}
-
-		int rc = sqlite3_open_v2(db_location, &handle->db, SQLITE_OPEN_READONLY, NULL);
-
-		if (rc != SQLITE_OK)
-		{
-			LOG_ERROR("Unable to open database of device %s (%s)", device_name, sqlite3_errmsg(handle->db));
-			db_free(handle);
-			return NULL;
-		}
-
-		if (!verify_database_sanity(handle))
-		{
-			LOG_ERROR("Malformed photo database of device %s", device_name);
-			db_free(handle);
-			return NULL;
-		}
-	}
-
-	return handle;
-}
-
-
-void db_free(db_h handle)
-{
-	if (handle)
-	{
-		if (handle->db)
-		{
-			sqlite3_close(handle->db);
-		}
-
-		free(handle->device_name);
-		free(handle->assets_table_name);
-		free(handle->assets_album_fk);
-		free(handle->assets_photo_fk);
-		free(handle);
-	}
-}
-
-bool db_extract_photos(db_h handle)
+static bool db_extract_photos(db_h handle)
 {
 	ASSERT_RET(handle != NULL, false);
 
@@ -201,7 +152,18 @@ bool db_extract_photos(db_h handle)
 			return -1;
 		}
 
-		printf("%s\t%s\t%s\n", record[0], record[1], record[2]);
+		const char* file_name = record[0];
+		const char* location = record[1];
+		const char* album_name = record[2];
+
+		album_h album = g_hash_table_lookup(handle->albums, album_name);
+		if (album == NULL)
+		{
+			album = album_create(album_name);
+			g_hash_table_insert(handle->albums, strdup(album_name), album);
+		}
+
+		album_add_photo(album, photo_create(file_name, location));
 
 		return 0;
 	}
@@ -211,3 +173,71 @@ bool db_extract_photos(db_h handle)
 
 	return true;
 }
+
+db_h db_create(const char* db_location, const char* device_name)
+{
+	ASSERT_RET(db_location != NULL, NULL);
+	ASSERT_RET(device_name != NULL, NULL);
+
+	db_h handle = calloc(1, sizeof(struct db_s));
+
+	if (handle)
+	{
+		LOG_DEBUG("DB path for device %s: %s", device_name, db_location);
+		handle->device_name = strdup(device_name);
+		handle->albums = g_hash_table_new_full(g_str_hash, g_str_equal, free, (GDestroyNotify) album_unref);
+
+		if (access(db_location, F_OK) == -1)
+		{
+			LOG_ERROR("Unable to open database %s (improper path)", db_location);
+			db_free(handle);
+			return NULL;
+		}
+
+		int rc = sqlite3_open_v2(db_location, &handle->db, SQLITE_OPEN_READONLY, NULL);
+
+		if (rc != SQLITE_OK)
+		{
+			LOG_ERROR("Unable to open database of device %s (%s)", device_name, sqlite3_errmsg(handle->db));
+			db_free(handle);
+			return NULL;
+		}
+
+		if (!verify_database_sanity(handle))
+		{
+			LOG_ERROR("Malformed photo database of device %s", device_name);
+			db_free(handle);
+			return NULL;
+		}
+	}
+
+	if (!db_extract_photos(handle))
+	{
+		LOG_ERROR("Unable to perform an initial photo extraction of device %s", device_name);
+		db_free(handle);
+		return NULL;
+	}
+
+	return handle;
+}
+
+
+void db_free(db_h handle)
+{
+	if (handle)
+	{
+		if (handle->db)
+		{
+			sqlite3_close(handle->db);
+		}
+
+		g_hash_table_unref(handle->albums);
+		free(handle->device_name);
+		free(handle->assets_table_name);
+		free(handle->assets_album_fk);
+		free(handle->assets_photo_fk);
+		free(handle);
+	}
+}
+
+
