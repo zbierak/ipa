@@ -1,6 +1,5 @@
 cmake_minimum_required (VERSION 2.8.11)
 project(ipa)
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
 option (IPA_RELEASE "Build a release version of ipa" ON)
 if (IPA_RELEASE)
