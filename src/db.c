@@ -22,12 +22,15 @@ typedef struct db_s
 {
 	sqlite3* db;                    /// the active connection to the sqlite database
 	char* device_name;              /// the human-readable of the corresponding device (may not be globally unique)
+	char* root_path;                /// the absolute path to the root directory of the corresponding device
 
 	char* assets_table_name;        /// discovered table name storing assets (see verify_database_sanity())
 	char* assets_album_fk;          /// discovered foreign key of album in assets table (see verify_database_sanity())
 	char* assets_photo_fk;          /// discovered foreign key of photo in assets table (see verify_database_sanity())
 
 	GHashTable* albums;             /// lookup table of all albums retrieved from database <album-name, album details> [char*, album_h]
+
+	gint ref_count;                 /// reference counter for db_h
 } db_t;
 
 static bool verify_database_sanity(db_h handle)
@@ -174,7 +177,7 @@ static bool db_extract_photos(db_h handle)
 	return true;
 }
 
-db_h db_create(const char* db_location, const char* device_name)
+db_h db_create(const char* db_location, const char* device_name, const char* root_path)
 {
 	ASSERT_RET(db_location != NULL, NULL);
 	ASSERT_RET(device_name != NULL, NULL);
@@ -184,13 +187,14 @@ db_h db_create(const char* db_location, const char* device_name)
 	if (handle)
 	{
 		LOG_DEBUG("DB path for device %s: %s", device_name, db_location);
+		handle->ref_count = 1;
 		handle->device_name = strdup(device_name);
 		handle->albums = g_hash_table_new_full(g_str_hash, g_str_equal, free, (GDestroyNotify) album_unref);
 
 		if (access(db_location, F_OK) == -1)
 		{
 			LOG_ERROR("Unable to open database %s (improper path)", db_location);
-			db_free(handle);
+			db_unref(handle);
 			return NULL;
 		}
 
@@ -199,14 +203,14 @@ db_h db_create(const char* db_location, const char* device_name)
 		if (rc != SQLITE_OK)
 		{
 			LOG_ERROR("Unable to open database of device %s (%s)", device_name, sqlite3_errmsg(handle->db));
-			db_free(handle);
+			db_unref(handle);
 			return NULL;
 		}
 
 		if (!verify_database_sanity(handle))
 		{
 			LOG_ERROR("Malformed photo database of device %s", device_name);
-			db_free(handle);
+			db_unref(handle);
 			return NULL;
 		}
 	}
@@ -214,18 +218,42 @@ db_h db_create(const char* db_location, const char* device_name)
 	if (!db_extract_photos(handle))
 	{
 		LOG_ERROR("Unable to perform an initial photo extraction of device %s", device_name);
-		db_free(handle);
+		db_unref(handle);
 		return NULL;
 	}
 
 	return handle;
 }
 
-
-void db_free(db_h handle)
+const char* db_get_device_name(const db_h handle)
 {
-	if (handle)
+	ASSERT_RET(handle, NULL);
+	return handle->device_name;
+}
+
+const char* db_get_root_path(const db_h handle)
+{
+	ASSERT_RET(handle, NULL);
+	return handle->root_path;
+}
+
+db_h db_ref(db_h handle)
+{
+	ASSERT_RET(handle, NULL);
+	ASSERT_RET(handle->ref_count > 0, handle);
+
+	g_atomic_int_inc(&handle->ref_count);
+	return handle;
+}
+
+void db_unref(db_h handle)
+{
+	ASSERT_RET(handle);
+	ASSERT_RET(handle->ref_count > 0);
+
+	if (g_atomic_int_dec_and_test(&handle->ref_count))
 	{
+		LOG_INFO("Freeing database...");
 		if (handle->db)
 		{
 			sqlite3_close(handle->db);

@@ -9,3 +9,5 @@
 
 // A null-safe variant of strstr
 #define STRSTR(haystack, needle) (((haystack) == NULL || (needle) == NULL) ? NULL : strstr(haystack, needle))
+
+#define STREQ(a, b) (strcmp(a, b) == 0)

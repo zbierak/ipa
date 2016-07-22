@@ -11,6 +11,8 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
+	filesystem_h fs = filesystem_create();
+
 	device_h* devices = NULL;
 	size_t devices_count = 0;
 
@@ -21,19 +23,23 @@ int main(int argc, char* argv[])
 			LOG_INFO("Found device %s (%s)", device_get_uid(devices[i]), device_get_name(devices[i]));
 
 			char* db_location = device_get_photo_db_location(devices[i]);
-			db_h db = db_create(db_location, device_get_name(devices[i]));
+			char* root_path = device_get_root_path(devices[i]);
+			db_h db = db_create(db_location, device_get_name(devices[i]), root_path);
 
-			if (db)
+			if (db != NULL)
 			{
-				db_free(db);
+				filesystem_add_database(fs, db);
 			}
 
 			free(db_location);
+			free(root_path);
 			device_free(devices[i]);
 		}
 
 		free(devices);
 	}
 
-	filesystem_run(argv[1]);
+	filesystem_run(fs, argv[1]);
+
+	filesystem_free(fs);
 }

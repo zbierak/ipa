@@ -36,6 +36,13 @@ const char* device_get_uid(const device_h handle);
  */
 const char* device_get_name(const device_h handle);
 
+/**
+ * Return the location of the root directory of the passed device
+ * @param device a valid handle for an existing device
+ * @return a location to the root directory of the device passed as the argument
+ * @note you should free the returned value by yourself
+ */
+char* device_get_root_path(const device_h device);
 
 /**
  * Return the location of the photo database relative to root.

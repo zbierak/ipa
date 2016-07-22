@@ -45,19 +45,34 @@ const char* device_get_name(const device_h handle)
 /*
  * GVFS default location:  /run/user/$uid/gvfs/
  * iDevice under GVFS:     afc:host=$device_uid
- * Photo db under iDevice: PhotoData/Photos.sqlite
  *
- * This function combines the three strings and returns a single address to idevice database
+ * This function combines the two strings and returns a single address to root directory of an idevice
  *
  * @todo gvfs default location should be extracted from /etc/mtab or somewhere else
  */
-char* device_get_photo_db_location(const device_h device)
+char* device_get_root_path(const device_h device)
 {
 	const char* device_id = device_get_uid(device);
 	ASSERT_RET(device_id != NULL, NULL);
 
 	char* buffer = NULL;
-	asprintf(&buffer, "/run/user/%u/gvfs/afc:host=%s/PhotoData/Photos.sqlite", getuid(), device_id);
+	asprintf(&buffer, "/run/user/%u/gvfs/afc:host=%s/", getuid(), device_id);
+	return buffer;
+}
+
+/*
+ * Photo db under iDevice is located in PhotoData/Photos.sqlite
+ * This function retrieves the root location of the device and adds the abovementioned path to photo db
+ * to produce the absolute path to idevice database.
+ */
+char* device_get_photo_db_location(const device_h device)
+{
+	char* root_path = device_get_root_path(device);
+	ASSERT_RET(root_path != NULL, NULL);
+
+	char* buffer = NULL;
+	asprintf(&buffer, "%sPhotoData/Photos.sqlite", root_path);
+	free(root_path);
 	return buffer;
 }
 
