@@ -1,4 +1,6 @@
 #include "filesystem.h"
+
+#include "path_parser.h"
 #include "logger.h"
 #include "utils.h"
 #include "db.h"
@@ -24,6 +26,22 @@ typedef struct filesystem_s
  */
 static filesystem_h fs_instance = NULL;
 
+#define DEFAULT_MODE_ROOT S_IFDIR | S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH
+
+static void getaatr_root(void* user_data)
+{
+	struct stat* stbuf = (struct stat*) user_data;
+	stbuf->st_mode = DEFAULT_MODE_ROOT;
+	stbuf->st_uid = getuid();
+	stbuf->st_gid = getgid();
+}
+
+static void getaatr_device(const db_h db, void* user_data)
+{
+	struct stat* stbuf = (struct stat*) user_data;
+	lstat(db_get_root_path(db), stbuf);
+}
+
 static int fs_getattr(const char* path, struct stat* stbuf)
 {
 	ASSERT_RET(fs_instance != NULL, -ENOENT);
@@ -31,12 +49,13 @@ static int fs_getattr(const char* path, struct stat* stbuf)
 
 	LOG_DEBUG("(fs_getattr at %s)", path);
 
-	if (STREQ(path, "/"))
+	if (path_parser_execute(path, fs_instance, (path_parser_cb_t) {
+		.on_root = getaatr_root,
+		.on_device = getaatr_device,
+		.on_root_user_data = stbuf,
+		.on_device_user_data = stbuf
+	}))
 	{
-		//lstat(path, stbuf);
-		stbuf->st_mode = S_IFDIR | S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
-		stbuf->st_uid = getuid();
-		stbuf->st_gid = getgid();
 		return 0;
 	}
 
@@ -47,26 +66,44 @@ static int fs_getattr(const char* path, struct stat* stbuf)
 	return -ENOENT;
 }
 
+typedef struct
+{
+	void* buf;
+	fuse_fill_dir_t filler;
+} fuse_readdir_params_t;
+
+static void readdir_root(void* user_data)
+{
+	fuse_readdir_params_t* params = (fuse_readdir_params_t*) user_data;
+
+	GHashTableIter it;
+	gpointer key;
+
+	g_hash_table_iter_init(&it, fs_instance->devices);
+	while (g_hash_table_iter_next(&it, &key, NULL))
+	{
+		params->filler(params->buf, (const char*) key, NULL, 0);
+	}
+}
+
 static int fs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 		off_t offset, struct fuse_file_info* fi)
 {
 	ASSERT_RET(fs_instance != NULL, -ENOENT);
 	ASSERT_RET(path != NULL, -ENOENT);
 
-	LOG_DEBUG("Not implemented (at %s)", path);
+	LOG_DEBUG("(fs_readdir at %s)", path);
 
-	// a subdirectory for every detected device
-	if (STREQ(path, "/"))
+	fuse_readdir_params_t params = {
+		.buf = buf,
+		.filler = filler
+	};
+
+	if (path_parser_execute(path, fs_instance, (path_parser_cb_t) {
+		.on_root = readdir_root,
+		.on_root_user_data = &params
+	}))
 	{
-		GHashTableIter it;
-		gpointer key;
-
-		g_hash_table_iter_init(&it, fs_instance->devices);
-		while (g_hash_table_iter_next(&it, &key, NULL))
-		{
-			filler(buf, (const char*) key, NULL, 0);
-		}
-
 		return 0;
 	}
 
@@ -160,6 +197,21 @@ bool filesystem_add_database(filesystem_h handle, db_h database)
 
 	g_hash_table_insert(handle->devices, device_name, database);
 	return true;
+}
+
+db_h filesystem_get_database_by_fs_name(filesystem_h handle, const char* fs_name)
+{
+	ASSERT_RET(handle != NULL, NULL);
+	ASSERT_RET(fs_name != NULL, NULL);
+
+	db_h db = (db_h) g_hash_table_lookup(handle->devices, fs_name);
+
+	if (db == NULL)
+	{
+		return NULL;
+	}
+
+	return db_ref(db);
 }
 
 void filesystem_free(filesystem_h handle)

@@ -2,6 +2,8 @@
 
 #include <stdbool.h>
 
+#include "album.h"
+
 /**
  * A structure for storing the contents of all albums on an idevice
  */
@@ -37,6 +39,16 @@ const char* db_get_device_name(const db_h handle);
  * @return the root path of the corresponding device or NULL on invalid argument
  */
 const char* db_get_root_path(const db_h handle);
+
+/**
+ * Get album from the database by its name
+ * @param handle a valid database handle
+ * @param album_name the name of the album which should be retrieved
+ * @return the handle of the album with the provided album_name or NULL when no such
+ * album has been found. If the return value is not NULL, you should unreference it
+ * with album_unref() when you no longer need it.
+ */
+album_h db_get_album_by_name(const db_h handle, const char* album_name);
 
 /**
  * Increases the reference counter of the passed db handle

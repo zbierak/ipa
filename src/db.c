@@ -181,6 +181,7 @@ db_h db_create(const char* db_location, const char* device_name, const char* roo
 {
 	ASSERT_RET(db_location != NULL, NULL);
 	ASSERT_RET(device_name != NULL, NULL);
+	ASSERT_RET(root_path != NULL, NULL);
 
 	db_h handle = calloc(1, sizeof(struct db_s));
 
@@ -189,6 +190,7 @@ db_h db_create(const char* db_location, const char* device_name, const char* roo
 		LOG_DEBUG("DB path for device %s: %s", device_name, db_location);
 		handle->ref_count = 1;
 		handle->device_name = strdup(device_name);
+		handle->root_path = strdup(root_path);
 		handle->albums = g_hash_table_new_full(g_str_hash, g_str_equal, free, (GDestroyNotify) album_unref);
 
 		if (access(db_location, F_OK) == -1)
@@ -237,6 +239,21 @@ const char* db_get_root_path(const db_h handle)
 	return handle->root_path;
 }
 
+album_h db_get_album_by_name(const db_h handle, const char* album_name)
+{
+	ASSERT_RET(handle, NULL);
+	ASSERT_RET(album_name, NULL);
+
+	album_h album = (album_h) g_hash_table_lookup(handle->albums, album_name);
+
+	if (album == NULL)
+	{
+		return NULL;
+	}
+
+	return album_ref(album);
+}
+
 db_h db_ref(db_h handle)
 {
 	ASSERT_RET(handle, NULL);
@@ -261,6 +278,7 @@ void db_unref(db_h handle)
 
 		g_hash_table_unref(handle->albums);
 		free(handle->device_name);
+		free(handle->root_path);
 		free(handle->assets_table_name);
 		free(handle->assets_album_fk);
 		free(handle->assets_photo_fk);

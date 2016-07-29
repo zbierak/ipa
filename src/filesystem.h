@@ -38,6 +38,21 @@ void filesystem_run(filesystem_h handle, const char* location);
 bool filesystem_add_database(filesystem_h handle, db_h database);
 
 /**
+ * Retrieve a database of an existing device by its filesystem name, that is the unique name
+ * assigned by the filesystem module.
+ *
+ * The filesystem name is a unique name of a device which is presented to FUSE. On more details
+ * how this filename is created, see the implementation of filesystem_add_database(), although
+ * in practice this knowledge should not be required.
+ * @param handle a valid handle of a previously created filesystem
+ * @param fs_name the filesystem name of a device retrieved from FUSE
+ * @return a handle of a device database if one identified by fs_name has been found, or NULL when
+ * no device with such filesystem name currently exists. Whenever the result value is not NULL, you
+ * should manually unreference it by calling db_unref() when you no longer need it.
+ */
+db_h filesystem_get_database_by_fs_name(filesystem_h handle, const char* fs_name);
+
+/**
  * Free the previously created instance of a filesystem
  * @param handle a handle of a filesystem which should be freed
  */
