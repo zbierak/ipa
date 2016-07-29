@@ -26,12 +26,13 @@ typedef struct filesystem_s
  */
 static filesystem_h fs_instance = NULL;
 
-#define DEFAULT_MODE_ROOT S_IFDIR | S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH
+#define DEFAULT_MODE_DIRECTORY S_IFDIR | S_IRUSR | S_IXUSR
+#define DEFAULT_MODE_PHOTO S_IFREG | S_IRUSR
 
 static void getaatr_root(void* user_data)
 {
 	struct stat* stbuf = (struct stat*) user_data;
-	stbuf->st_mode = DEFAULT_MODE_ROOT;
+	stbuf->st_mode = DEFAULT_MODE_DIRECTORY;
 	stbuf->st_uid = getuid();
 	stbuf->st_gid = getgid();
 }
@@ -40,6 +41,21 @@ static void getaatr_device(const db_h db, void* user_data)
 {
 	struct stat* stbuf = (struct stat*) user_data;
 	lstat(db_get_root_path(db), stbuf);
+	stbuf->st_mode = DEFAULT_MODE_DIRECTORY;
+}
+
+static void getattr_album(const db_h db, const album_h album, void* user_data)
+{
+	struct stat* stbuf = (struct stat*) user_data;
+	lstat(db_get_root_path(db), stbuf);
+	stbuf->st_mode = DEFAULT_MODE_DIRECTORY;
+}
+
+static void getattr_photo(const db_h device_db, const album_h album, const photo_h photo, void* user_data)
+{
+	struct stat* stbuf = (struct stat*) user_data;
+	lstat(photo_get_location(photo), stbuf);
+	stbuf->st_mode = DEFAULT_MODE_PHOTO;
 }
 
 static int fs_getattr(const char* path, struct stat* stbuf)
@@ -52,16 +68,16 @@ static int fs_getattr(const char* path, struct stat* stbuf)
 	if (path_parser_execute(path, fs_instance, (path_parser_cb_t) {
 		.on_root = getaatr_root,
 		.on_device = getaatr_device,
+		.on_album = getattr_album,
+		.on_photo = getattr_photo,
 		.on_root_user_data = stbuf,
-		.on_device_user_data = stbuf
+		.on_device_user_data = stbuf,
+		.on_album_user_data = stbuf,
+		.on_photo_user_data = stbuf
 	}))
 	{
 		return 0;
 	}
-
-	// todo: add other types of dirs
-
-	// TODO: under other types of dirs you might want to call lstat (e.g. on the root of different devices) - more accurate data without hustle
 
 	return -ENOENT;
 }
@@ -86,6 +102,30 @@ static void readdir_root(void* user_data)
 	}
 }
 
+static bool readdir_device_for_each_album(const db_h handle, const album_h album, void* user_data)
+{
+	fuse_readdir_params_t* params = (fuse_readdir_params_t*) user_data;
+	params->filler(params->buf, album_get_name(album), NULL, 0);
+	return true;
+}
+
+static void readdir_device(const db_h db, void* user_data)
+{
+	db_for_each_album(db, readdir_device_for_each_album, user_data);
+}
+
+static bool readdir_album_for_each_photo(const album_h handle, const photo_h photo, void* user_data)
+{
+	fuse_readdir_params_t* params = (fuse_readdir_params_t*) user_data;
+	params->filler(params->buf, photo_get_file_name(photo), NULL, 0);
+	return true;
+}
+
+static void readdir_album(const db_h db, const album_h album, void* user_data)
+{
+	album_for_each_photo(album, readdir_album_for_each_photo, user_data);
+}
+
 static int fs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 		off_t offset, struct fuse_file_info* fi)
 {
@@ -101,13 +141,15 @@ static int fs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 
 	if (path_parser_execute(path, fs_instance, (path_parser_cb_t) {
 		.on_root = readdir_root,
-		.on_root_user_data = &params
+		.on_device = readdir_device,
+		.on_album = readdir_album,
+		.on_root_user_data = &params,
+		.on_device_user_data = &params,
+		.on_album_user_data = &params
 	}))
 	{
 		return 0;
 	}
-
-	// todo: add other types of dirs
 
 	return -ENOENT;
 }

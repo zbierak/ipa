@@ -121,6 +121,42 @@ static bool verify_database_sanity(db_h handle)
 	return handle->assets_album_fk != NULL && handle->assets_photo_fk != NULL;
 }
 
+static int db_extract_photos_query_callback(void* user_data, int col_count, char** record, char** col_names)
+{
+	db_h handle = (db_h) user_data;
+	ASSERT_RET(handle != NULL, -1);
+
+	if (col_count != 3)
+	{
+		LOG_ERROR("The query should return exactly three columns");
+		return -1;
+	}
+
+	const char* file_name = record[0];
+	const char* location = record[1];
+	const char* album_name = record[2];
+
+	ASSERT_RET(file_name != NULL, -1);
+	ASSERT_RET(location != NULL, -1);
+	ASSERT_RET(album_name != NULL, -1);
+
+	char* absolute_location = NULL;
+	asprintf(&absolute_location, "%s%s", handle->root_path, location)
+	ASSERT_RET(absolute_location != NULL, -1);
+
+	album_h album = g_hash_table_lookup(handle->albums, album_name);
+	if (album == NULL)
+	{
+		album = album_create(album_name);
+		g_hash_table_insert(handle->albums, strdup(album_name), album);
+	}
+
+	album_add_photo(album, photo_create(file_name, absolute_location));
+
+	free(absolute_location);
+	return 0;
+}
+
 static bool db_extract_photos(db_h handle)
 {
 	ASSERT_RET(handle != NULL, false);
@@ -144,34 +180,7 @@ static bool db_extract_photos(db_h handle)
 
 	LOG_DEBUG("Photo query: %s", query);
 
-	int query_callback(void* user_data, int col_count, char** record, char** col_names)
-	{
-		db_h handle = (db_h) user_data;
-		ASSERT_RET(handle != NULL, -1);
-
-		if (col_count != 3)
-		{
-			LOG_WARN("The query should return exactly three columns");
-			return -1;
-		}
-
-		const char* file_name = record[0];
-		const char* location = record[1];
-		const char* album_name = record[2];
-
-		album_h album = g_hash_table_lookup(handle->albums, album_name);
-		if (album == NULL)
-		{
-			album = album_create(album_name);
-			g_hash_table_insert(handle->albums, strdup(album_name), album);
-		}
-
-		album_add_photo(album, photo_create(file_name, location));
-
-		return 0;
-	}
-
-	sqlite3_exec(handle->db, query, query_callback, handle, NULL);
+	sqlite3_exec(handle->db, query, db_extract_photos_query_callback, handle, NULL);
 	free(query);
 
 	return true;
@@ -237,6 +246,26 @@ const char* db_get_root_path(const db_h handle)
 {
 	ASSERT_RET(handle, NULL);
 	return handle->root_path;
+}
+
+bool db_for_each_album(const db_h handle, db_for_each_album_cb callback, void* user_data)
+{
+	ASSERT_RET(handle != NULL, false);
+	ASSERT_RET(callback != NULL, false);
+
+	GHashTableIter it;
+	gpointer value;
+
+	g_hash_table_iter_init(&it, handle->albums);
+	while (g_hash_table_iter_next(&it, NULL, &value))
+	{
+		if (!callback(handle, (album_h) value, user_data))
+		{
+			break;
+		}
+	}
+
+	return true;
 }
 
 album_h db_get_album_by_name(const db_h handle, const char* album_name)

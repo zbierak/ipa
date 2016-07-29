@@ -15,6 +15,16 @@ struct db_s;
 typedef struct db_s* db_h;
 
 /**
+ * A callback invoked by db_for_each_album() for each album belonging to a device database
+ * @param handle a handle of a device database to which the album belongs
+ * @param album the album which belongs to the device database
+ * @param user_data user data passed to db_for_each_album()
+ * @return true if you want to continue invoking this callback for subsequent albums, or false if
+ * you don't care about the remaining albums and db_for_each_album() should be immediately terminated.
+ */
+typedef bool (*db_for_each_album_cb)(const db_h handle, const album_h album, void* user_data);
+
+/**
  * Creates the instance of db for the specified location
  * @param[in] db_location a location of the database which should be opened
  * @param[in] device_name a name of the device corresponding to the database
@@ -39,6 +49,15 @@ const char* db_get_device_name(const db_h handle);
  * @return the root path of the corresponding device or NULL on invalid argument
  */
 const char* db_get_root_path(const db_h handle);
+
+/**
+ * This function synchronously calls the passed callback for each album from the provided device database
+ * @param handle the handle of a device database for which the albums should be reported
+ * @param callback the callback which should be invoked for each album from a device database
+ * @param user_data the user data which should be passed to the callback
+ * @return true on success, false if the provided arguments were incorrect
+ */
+bool db_for_each_album(const db_h handle, db_for_each_album_cb callback, void* user_data);
 
 /**
  * Get album from the database by its name
