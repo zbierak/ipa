@@ -63,8 +63,6 @@ static int fs_getattr(const char* path, struct stat* stbuf)
 	ASSERT_RET(fs_instance != NULL, -ENOENT);
 	ASSERT_RET(path != NULL, -ENOENT);
 
-	LOG_DEBUG("(fs_getattr at %s)", path);
-
 	if (path_parser_execute(path, fs_instance, (path_parser_cb_t) {
 		.on_root = getaatr_root,
 		.on_device = getaatr_device,
@@ -131,8 +129,6 @@ static int fs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 {
 	ASSERT_RET(fs_instance != NULL, -ENOENT);
 	ASSERT_RET(path != NULL, -ENOENT);
-
-	LOG_DEBUG("(fs_readdir at %s)", path);
 
 	fuse_readdir_params_t params = {
 		.buf = buf,

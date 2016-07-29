@@ -5,12 +5,18 @@
 
 #include <string.h>
 
+// uncomment this if you want to be notified if the path could not be parsed into an element existing in db
+//#define WARN_ABOUT_FAILED_TRANSLATION
+
 static bool process_photo(char* path, db_h db, album_h album, path_parser_cb_t callbacks)
 {
 	photo_h photo = album_get_photo_by_file_name(album, path);
 	if (photo == NULL)
 	{
+		#ifdef WARN_ABOUT_FAILED_TRANSLATION
 		LOG_WARN("Unable to retrieve photo with name '%s' from album '%s'", path, album_get_name(album));
+		#endif
+
 		return false;
 	}
 
@@ -37,7 +43,10 @@ static bool process_album(char* path, db_h db, path_parser_cb_t callbacks)
 	album_h am = db_get_album_by_name(db, album);
 	if (am == NULL)
 	{
+		#ifdef WARN_ABOUT_FAILED_TRANSLATION
 		LOG_WARN("Unable to retrieve album with name '%s'", album);
+		#endif
+
 		return false;
 	}
 
@@ -74,7 +83,10 @@ static bool process_device(char* path, filesystem_h fs, path_parser_cb_t callbac
 	db_h db = filesystem_get_database_by_fs_name(fs, device);
 	if (db == NULL)
 	{
+		#ifdef WARN_ABOUT_FAILED_TRANSLATION
 		LOG_WARN("Unable to retrieve device with name '%s'", device);
+		#endif
+
 		return false;
 	}
 
