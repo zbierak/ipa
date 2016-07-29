@@ -65,6 +65,19 @@ typedef struct path_parser_cb_s
 } path_parser_cb_t;
 
 /**
+ * A handle of a path parser
+ */
+typedef struct path_parser_s* path_parser_h;
+
+/**
+ * Creates a new instance of path parser assigned to a certain filesystem.
+ * @return a new instance of path parser or NULL on error
+ * @note the passed filesystem pointer must be valid at least until path_parser_free() is called
+ * on the handle returned by this function.
+ */
+path_parser_h path_parser_create(filesystem_h fs);
+
+/**
  * Parses the path retrieved from FUSE and invokes the corresponding callbacks based on what the
  * deepest element of the path contains.
  * @param path the path retrieved from FUSE, currently in format '/[device[/album[/photo]]]', where
@@ -74,4 +87,10 @@ typedef struct path_parser_cb_s
  * @return true if a root elemet/device/album/photo has been found within the path or false if the
  * path refers to an object which has not been found in the passed filesystem element.
  */
-bool path_parser_execute(const char* path, filesystem_h fs, path_parser_cb_t callbacks);
+bool path_parser_execute(path_parser_h handle, const char* path, path_parser_cb_t callbacks);
+
+/**
+ * Frees all memory assigned with an instance of path parser
+ * @param handle a handle to a path parser which should be freed
+ */
+void path_parser_free(path_parser_h handle);

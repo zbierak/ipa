@@ -17,6 +17,7 @@
 typedef struct filesystem_s
 {
 	GHashTable* devices;         /// lookup table for databases of devices <unique-device-name,database details> [char*,db_h]
+	path_parser_h parser;
 } filesystem_t;
 
 /**
@@ -63,7 +64,7 @@ static int fs_getattr(const char* path, struct stat* stbuf)
 	ASSERT_RET(fs_instance != NULL, -ENOENT);
 	ASSERT_RET(path != NULL, -ENOENT);
 
-	if (path_parser_execute(path, fs_instance, (path_parser_cb_t) {
+	if (path_parser_execute(fs_instance->parser, path, (path_parser_cb_t) {
 		.on_root = getaatr_root,
 		.on_device = getaatr_device,
 		.on_album = getattr_album,
@@ -135,7 +136,7 @@ static int fs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 		.filler = filler
 	};
 
-	if (path_parser_execute(path, fs_instance, (path_parser_cb_t) {
+	if (path_parser_execute(fs_instance->parser, path, (path_parser_cb_t) {
 		.on_root = readdir_root,
 		.on_device = readdir_device,
 		.on_album = readdir_album,
@@ -166,7 +167,7 @@ static int fs_open(const char* path, struct fuse_file_info* fi)
 {
 	fi->fh = -1;
 
-	path_parser_execute(path, fs_instance, (path_parser_cb_t) {
+	path_parser_execute(fs_instance->parser, path, (path_parser_cb_t) {
 		.on_photo = open_photo,
 		.on_photo_user_data = fi
 	});
@@ -212,6 +213,7 @@ filesystem_h filesystem_create(void)
 	ASSERT_RET(handle != NULL, NULL);
 
 	handle->devices = g_hash_table_new_full(g_str_hash, g_str_equal, free, (GDestroyNotify) db_unref);
+	handle->parser = path_parser_create(handle);
 
 	return handle;
 }
@@ -282,6 +284,7 @@ void filesystem_free(filesystem_h handle)
 	if (handle)
 	{
 		g_hash_table_unref(handle->devices);
+		path_parser_free(handle->parser);
 		free(handle);
 		fs_instance = NULL;
 	}
