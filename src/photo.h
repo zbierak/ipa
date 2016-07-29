@@ -22,7 +22,8 @@ photo_h photo_create(const char* file_name, const char* location);
 const char* photo_get_file_name(const photo_h handle);
 
 /**
- * Get the location of the passed photo
+ * Get the absolute location of the passed photo, i,e, the absolute path
+ * to it from the root, including the file name of the photo
  * @param handle a valid handle to a photo structure
  * @return the location from the passed photo structure or NULL on error
  */

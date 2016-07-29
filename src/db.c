@@ -141,7 +141,7 @@ static int db_extract_photos_query_callback(void* user_data, int col_count, char
 	ASSERT_RET(album_name != NULL, -1);
 
 	char* absolute_location = NULL;
-	asprintf(&absolute_location, "%s%s", handle->root_path, location)
+	asprintf(&absolute_location, "%s%s/%s", handle->root_path, location, file_name)
 	ASSERT_RET(absolute_location != NULL, -1);
 
 	album_h album = g_hash_table_lookup(handle->albums, album_name);

@@ -154,26 +154,51 @@ static int fs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
 	return -ENOENT;
 }
 
+static void open_photo(const db_h device_db, const album_h album, const photo_h photo, void* user_data)
+{
+	struct fuse_file_info* fi = (struct fuse_file_info*) user_data;
+
+	int fd = open(photo_get_location(photo), fi->flags);
+
+	if (fd != -1)
+	{
+		fi->fh = fd;
+	}
+}
+
 static int fs_open(const char* path, struct fuse_file_info* fi)
 {
-	LOG_DEBUG("Not implemented");
+	fi->fh = -1;
 
-	//todo: if you use file handles, you should also allocate any necessary structures and set fi->fh.
-	//https://github.com/libfuse/libfuse/blob/master/example/fusexmp_fh.c
+	path_parser_execute(path, fs_instance, (path_parser_cb_t) {
+		.on_photo = open_photo,
+		.on_photo_user_data = fi
+	});
+
+	if (fi->fh != -1)
+	{
+		return 0;
+	}
+
 	return -ENOENT;
 }
 
 static int fs_read(const char* path, char* buf, size_t size, off_t offset,
 		struct fuse_file_info* fi)
 {
-	LOG_DEBUG("Not implemented");
-	return -ENOENT;
+	int result = pread(fi->fh, buf, size, offset);
+	if (result == -1)
+	{
+		return -errno;
+	}
+
+	return result;
 }
 
 static int fs_release(const char* path, struct fuse_file_info* fi)
 {
-	LOG_DEBUG("Not implemented");
-	return -ENOENT;
+	close(fi->fh);
+	return 0;
 }
 
 static struct fuse_operations fs_impl =
